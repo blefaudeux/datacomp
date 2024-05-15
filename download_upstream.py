@@ -67,6 +67,12 @@ if __name__ == "__main__":
         default=False,
     )
     parser.add_argument(
+        "--resume_metadata",
+        help="If true, try to resume an existing metadata download.",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
         "--skip_bbox_blurring",
         help="If true, skip bounding box blurring on images while downloading.",
         action="store_true",
@@ -157,26 +163,27 @@ if __name__ == "__main__":
         metadata_dir = args.data_dir / "metadata"
 
     # Download the metadata files if needed.
-    if args.overwrite_metadata or not metadata_dir.exists():
-        if metadata_dir.exists():
+    if args.overwrite_metadata or not metadata_dir.exists() or args.resume_metadata:
+        if metadata_dir.exists() and args.overwrite_metadata:
             print(f"Cleaning up {metadata_dir}")
             shutil.rmtree(metadata_dir)
-        metadata_dir.mkdir(parents=True)
+        metadata_dir.mkdir(exist_ok=True, parents=True)
 
         print(f"Downloading metadata to {metadata_dir}...")
 
-        cache_dir = metadata_dir.parent / f"hf"
+        cache_dir = metadata_dir.parent / "hf"
         hf_snapshot_args = dict(
             repo_id=hf_repo,
-            allow_patterns=f"*.parquet",
+            allow_patterns="*.parquet",
             local_dir=metadata_dir,
             cache_dir=cache_dir,
             local_dir_use_symlinks=False,
             repo_type="dataset",
+            resume_download=args.resume_metadata,
         )
 
         if args.scale == "xlarge":
-            hf_snapshot_args["allow_patterns"] = f"*/*.parquet"
+            hf_snapshot_args["allow_patterns"] = "*/*.parquet"
 
         snapshot_download(**hf_snapshot_args)
         if args.download_npz:
